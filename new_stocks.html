@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Ticker</title>
+    <style>
+        .ticker-tape {
+            background-color: #f4f4f4;
+            padding: 10px 0;
+            overflow: hidden;
+            white-space: nowrap;
+            font-size: 18px;
+            font-family: Arial, sans-serif;
+        }
+        .ticker-tape span {
+            margin-right: 50px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="ticker-tape" id="ticker-tape">
+        <!-- Stock tickers will go here -->
+    </div>
+
+    <script>
+        const apiKey = 'YOUR_ALPHAVANTAGE_API_KEY';
+        const symbols = ['TSLA', 'AAPL', 'GOOG', 'K', 'BTCUSD'];
+
+        // Function to fetch stock data from Alpha Vantage API
+        async function fetchStockData(symbol) {
+            const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=5min&apikey=${apiKey}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            const lastRefreshed = data['Meta Data']['3. Last Refreshed'];
+            const latestData = data['Time Series (5min)'][lastRefreshed];
+            const price = latestData['4. close'];
+            return { symbol, price };
+        }
+
+        // Function to update the ticker tape
+        async function updateTickerTape() {
+            const tickerTape = document.getElementById('ticker-tape');
+            tickerTape.innerHTML = ''; // Clear the existing content
+
+            for (const symbol of symbols) {
+                const stockData = await fetchStockData(symbol);
+                const tickerElement = document.createElement('span');
+                tickerElement.textContent = `${stockData.symbol}: $${stockData.price}`;
+                tickerTape.appendChild(tickerElement);
+            }
+        }
+
+        // Initial load of the ticker tape
+        updateTickerTape();
+        // Refresh every 30 seconds
+        setInterval(updateTickerTape, 30000);
+    </script>
+</body>
+</html>
