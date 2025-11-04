@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Stock & Crypto Ticker</title>
+    <title>Stock & Crypto Ticker</title>
     <style>
         /* Style for the ticker tape container */
         .ticker-container {
@@ -46,39 +46,42 @@
 
 <div class="ticker-container">
     <div class="ticker-wrapper" id="ticker-wrapper">
-        <!-- Stock tickers will be appended here dynamically -->
+        <!-- Stock and crypto tickers will be appended here dynamically -->
     </div>
 </div>
 
 <script>
-    const apiKey = 'YOUR_ALPHAVANTAGE_API_KEY'; // Alpha Vantage API key for stocks
-    const coinGeckoAPI = 'https://api.coingecko.com/api/v3/coins/'; // CoinGecko API base URL
-    const stockSymbols = ['TSLA', 'AAPL', 'GOOG', 'KO', 'MSFT']; // Example stock symbols
-    const cryptoSymbols = ['bitcoin', 'ethereum', 'dogecoin', 'cardano']; // Example crypto symbols
+    const apiKey = 'YOUR_FINNHUB_API_KEY'; // Finnhub API key for stock data
+    const symbols = [
+        { "description": "Tesla", "symbol": "TSLA" },
+        { "description": "Apple", "symbol": "AAPL" },
+        { "description": "Kellanova fka Kellogg", "symbol": "K" },
+        { "description": "Coca-Cola", "symbol": "KO" },
+        { "description": "TKO Holdings", "symbol": "TKO" },
+        { "description": "Bitcoin", "symbol": "BTC-USD" },
+        { "description": "Ethereum", "symbol": "ETH-USD" },
+    ];
 
-    // Function to fetch stock data from Alpha Vantage
+    // Function to fetch stock data from Finnhub
     async function fetchStockData(symbol) {
-        const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=5min&apikey=${apiKey}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        const lastRefreshed = data['Meta Data']?.['3. Last Refreshed'];
-        if (!lastRefreshed) return null; // No data found
+        const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
 
-        const latestData = data['Time Series (5min)'][lastRefreshed];
-        const price = latestData['4. close'];
-        return { symbol, price, logo: `https://logo.clearbit.com/${symbol.toLowerCase()}.com` };
-    }
+            if (data.error) {
+                console.error(`Error fetching data for ${symbol}:`, data.error);
+                return null;
+            }
 
-    // Function to fetch cryptocurrency data from CoinGecko
-    async function fetchCryptoData(symbol) {
-        const url = `${coinGeckoAPI}${symbol}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        if (!data || !data.image) return null;
-
-        const price = data.market_data.current_price.usd;
-        const logo = data.image.small; // Logo from CoinGecko
-        return { symbol: symbol.toUpperCase(), price, logo };
+            return {
+                price: data.c, // current price
+                symbol,
+            };
+        } catch (error) {
+            console.error('Error fetching stock data:', error);
+            return null;
+        }
     }
 
     // Function to update the ticker with both stock and crypto data
@@ -86,29 +89,13 @@
         const tickerWrapper = document.getElementById('ticker-wrapper');
         tickerWrapper.innerHTML = ''; // Clear existing tickers
 
-        // Fetch and display stock tickers
-        for (const symbol of stockSymbols) {
-            const stockData = await fetchStockData(symbol);
+        for (const symbolInfo of symbols) {
+            const stockData = await fetchStockData(symbolInfo.symbol);
             if (stockData) {
                 const tickerItem = document.createElement('div');
                 tickerItem.classList.add('ticker-item');
                 tickerItem.innerHTML = `
-                    <img src="${stockData.logo}" alt="${symbol} logo">
-                    ${symbol}: $${stockData.price}
-                `;
-                tickerWrapper.appendChild(tickerItem);
-            }
-        }
-
-        // Fetch and display crypto tickers
-        for (const symbol of cryptoSymbols) {
-            const cryptoData = await fetchCryptoData(symbol);
-            if (cryptoData) {
-                const tickerItem = document.createElement('div');
-                tickerItem.classList.add('ticker-item');
-                tickerItem.innerHTML = `
-                    <img src="${cryptoData.logo}" alt="${symbol} logo">
-                    ${cryptoData.symbol}: $${cryptoData.price}
+                    <span><strong>${symbolInfo.description}:</strong> $${stockData.price}</span>
                 `;
                 tickerWrapper.appendChild(tickerItem);
             }
