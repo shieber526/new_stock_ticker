@@ -3,59 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Ticker</title>
+    <title>Live Stock & Crypto Ticker</title>
     <style>
-        .ticker-tape {
-            background-color: #f4f4f4;
-            padding: 10px 0;
+        /* Style for the ticker tape container */
+        .ticker-container {
+            width: 100%;
             overflow: hidden;
             white-space: nowrap;
-            font-size: 18px;
+            background-color: #fff;
             font-family: Arial, sans-serif;
+            padding: 10px 0;
+            box-sizing: border-box;
+            border-bottom: 2px solid #ddd;
         }
-        .ticker-tape span {
+        
+        /* Scroll animation */
+        .ticker-wrapper {
+            display: flex;
+            animation: scroll 20s linear infinite;
+        }
+        
+        .ticker-item {
             margin-right: 50px;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            font-size: 18px;
+        }
+
+        .ticker-item img {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        @keyframes scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
         }
     </style>
 </head>
 <body>
-    <div class="ticker-tape" id="ticker-tape">
-        <!-- Stock tickers will go here -->
+
+<div class="ticker-container">
+    <div class="ticker-wrapper" id="ticker-wrapper">
+        <!-- Stock tickers will be appended here dynamically -->
     </div>
+</div>
 
-    <script>
-        const apiKey = 'YOUR_ALPHAVANTAGE_API_KEY';
-        const symbols = ['TSLA', 'AAPL', 'GOOG', 'K', 'BTCUSD'];
+<script>
+    const apiKey = 'YOUR_ALPHAVANTAGE_API_KEY'; // Alpha Vantage API key for stocks
+    const coinGeckoAPI = 'https://api.coingecko.com/api/v3/coins/'; // CoinGecko API base URL
+    const stockSymbols = ['TSLA', 'AAPL', 'GOOG', 'KO', 'MSFT']; // Example stock symbols
+    const cryptoSymbols = ['bitcoin', 'ethereum', 'dogecoin', 'cardano']; // Example crypto symbols
 
-        // Function to fetch stock data from Alpha Vantage API
-        async function fetchStockData(symbol) {
-            const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=5min&apikey=${apiKey}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            const lastRefreshed = data['Meta Data']['3. Last Refreshed'];
-            const latestData = data['Time Series (5min)'][lastRefreshed];
-            const price = latestData['4. close'];
-            return { symbol, price };
-        }
+    // Function to fetch stock data from Alpha Vantage
+    async function fetchStockData(symbol) {
+        const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=5min&apikey=${apiKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        const lastRefreshed = data['Meta Data']?.['3. Last Refreshed'];
+        if (!lastRefreshed) return null; // No data found
 
-        // Function to update the ticker tape
-        async function updateTickerTape() {
-            const tickerTape = document.getElementById('ticker-tape');
-            tickerTape.innerHTML = ''; // Clear the existing content
+        const latestData = data['Time Series (5min)'][lastRefreshed];
+        const price = latestData['4. close'];
+        return { symbol, price, logo: `https://logo.clearbit.com/${symbol.toLowerCase()}.com` };
+    }
 
-            for (const symbol of symbols) {
-                const stockData = await fetchStockData(symbol);
-                const tickerElement = document.createElement('span');
-                tickerElement.textContent = `${stockData.symbol}: $${stockData.price}`;
-                tickerTape.appendChild(tickerElement);
+    // Function to fetch cryptocurrency data from CoinGecko
+    async function fetchCryptoData(symbol) {
+        const url = `${coinGeckoAPI}${symbol}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (!data || !data.image) return null;
+
+        const price = data.market_data.current_price.usd;
+        const logo = data.image.small; // Logo from CoinGecko
+        return { symbol: symbol.toUpperCase(), price, logo };
+    }
+
+    // Function to update the ticker with both stock and crypto data
+    async function updateTicker() {
+        const tickerWrapper = document.getElementById('ticker-wrapper');
+        tickerWrapper.innerHTML = ''; // Clear existing tickers
+
+        // Fetch and display stock tickers
+        for (const symbol of stockSymbols) {
+            const stockData = await fetchStockData(symbol);
+            if (stockData) {
+                const tickerItem = document.createElement('div');
+                tickerItem.classList.add('ticker-item');
+                tickerItem.innerHTML = `
+                    <img src="${stockData.logo}" alt="${symbol} logo">
+                    ${symbol}: $${stockData.price}
+                `;
+                tickerWrapper.appendChild(tickerItem);
             }
         }
 
-        // Initial load of the ticker tape
-        updateTickerTape();
-        // Refresh every 30 seconds
-        setInterval(updateTickerTape, 30000);
-    </script>
+        // Fetch and display crypto tickers
+        for (const symbol of cryptoSymbols) {
+            const cryptoData = await fetchCryptoData(symbol);
+            if (cryptoData) {
+                const tickerItem = document.createElement('div');
+                tickerItem.classList.add('ticker-item');
+                tickerItem.innerHTML = `
+                    <img src="${cryptoData.logo}" alt="${symbol} logo">
+                    ${cryptoData.symbol}: $${cryptoData.price}
+                `;
+                tickerWrapper.appendChild(tickerItem);
+            }
+        }
+    }
+
+    // Initial load of the ticker
+    updateTicker();
+    // Refresh ticker every 30 seconds
+    setInterval(updateTicker, 30000);
+
+</script>
+
 </body>
 </html>
